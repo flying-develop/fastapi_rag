@@ -1,4 +1,4 @@
-[← БД и миграции](db.md) · [Back to README](../README.md)
+[← БД и миграции](db.md) · [Back to README](../README.md) · [DialogMessage →](dialog-message.md)
 
 # Модуль dialog
 
@@ -81,4 +81,5 @@ different loop`. В `pyproject.toml` обе настройки теперь вы
 ## See Also
 
 - [БД и миграции](db.md) — engine/session, Alembic, тесты через Docker
+- [DialogMessage](dialog-message.md) — история сообщений диалога
 - [Архитектура](../.ai-factory/ARCHITECTURE.md) — паттерн Structured Modules, границы модулей

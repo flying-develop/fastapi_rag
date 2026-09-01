@@ -32,13 +32,16 @@ tasks, moderation, files появятся на следующих вехах.
 app/
 ├── main.py                    # точка входа FastAPI, /health, проверка БД в lifespan
 ├── modules/
-│   └── dialog/                # первый доменный модуль (см. docs/dialog.md)
+│   └── dialog/                # первый доменный модуль (см. docs/dialog.md, docs/dialog-message.md)
 │       ├── models/
-│       │   └── dialog.py       # Dialog(Base)
+│       │   ├── dialog.py       # Dialog(Base)
+│       │   └── dialog_message.py  # DialogMessage(Base) — история сообщений
 │       ├── repositories/
-│       │   └── dialog_repository.py  # DialogRepository — сквозной CRUD
+│       │   ├── dialog_repository.py  # DialogRepository — сквозной CRUD
+│       │   └── dialog_message_repository.py  # DialogMessageRepository — append/list_by_dialog
 │       └── schemas/
-│           └── dialog.py       # DialogCreate/DialogUpdate/DialogRead
+│           ├── dialog.py       # DialogCreate/DialogUpdate/DialogRead
+│           └── dialog_message.py  # DialogMessageCreate/DialogMessageRead
 └── infrastructure/
     ├── config.py               # Settings (pydantic-settings), get_settings()
     ├── logging.py               # setup_logging(), структурированный key=value формат
@@ -50,7 +53,8 @@ tests/
 │   └── test_db.py             # тесты engine/session на реальном Postgres из Docker
 └── modules/
     └── dialog/
-        └── test_dialog_repository.py  # CRUD-тесты DialogRepository
+        ├── test_dialog_repository.py  # CRUD-тесты DialogRepository
+        └── test_dialog_message_repository.py  # тесты DialogMessageRepository
 alembic.ini                    # конфиг Alembic (URL переопределяется в migrations/env.py)
 Dockerfile                     # образ приложения (uv, python:3.12-slim)
 docker-compose.yml             # app + postgres + redis + qdrant
@@ -66,6 +70,7 @@ docker-compose.yml             # app + postgres + redis + qdrant
 | `app/infrastructure/logging.py` | Структурированное логирование (`setup_logging()`) |
 | `app/infrastructure/db.py` | Async engine/session (`Base`, `get_db()`) |
 | `app/modules/dialog/repositories/dialog_repository.py` | `DialogRepository` — образец repository-паттерна для остальных модулей |
+| `app/modules/dialog/repositories/dialog_message_repository.py` | `DialogMessageRepository` — история сообщений диалога |
 | `migrations/env.py` | Настройка Alembic: URL из `Settings`, `target_metadata = Base.metadata`; импортирует модели каждого модуля для autogenerate |
 | `docker-compose.yml` | Локальное окружение: app + PostgreSQL + Redis + Qdrant |
 
@@ -88,6 +93,7 @@ docker-compose.yml             # app + postgres + redis + qdrant
 | Конфигурация | `docs/configuration.md` | Переменные окружения |
 | БД и миграции | `docs/db.md` | Async SQLAlchemy engine/session, Alembic, тесты через Docker |
 | Модуль dialog | `docs/dialog.md` | Модель, репозиторий, схемы — первый доменный модуль |
+| DialogMessage | `docs/dialog-message.md` | Модель и репозиторий истории сообщений диалога |
 | ARCHITECTURE | `.ai-factory/ARCHITECTURE.md` | Архитектурный паттерн, структура папок, примеры кода |
 | DESCRIPTION | `.ai-factory/DESCRIPTION.md` | Спецификация проекта, стек, архитектурные заметки |
 | Roadmap | `.ai-factory/ROADMAP.md` | Вехи развития проекта |
