@@ -1,0 +1,29 @@
+[project]
+name = "ai-app-python"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.19.1",
+    "asyncpg>=0.31.0",
+    "fastapi>=0.141.1",
+    "pydantic-settings>=2.15.0",
+    "sqlalchemy[asyncio]>=2.0.52",
+    "uvicorn[standard]>=0.52.4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+# The SQLAlchemy async engine (and its connection pool) is created once at
+# module import time (app/infrastructure/db.py) and reused across tests, so
+# all tests must share a single event loop — otherwise pooled asyncpg
+# connections end up bound to a closed loop from a previous test.
+asyncio_default_test_loop_scope = "session"
+testpaths = ["tests"]
+pythonpath = ["."]
