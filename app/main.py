@@ -5,11 +5,15 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
+from starlette.requests import Request
 
 from app.infrastructure.config import get_settings
 from app.infrastructure.db import engine
 from app.infrastructure.logging import setup_logging
+from app.modules.dialog.api.router import router as dialog_router
+from app.modules.dialog.exceptions import DialogNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +52,19 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title=get_settings().app_name, lifespan=lifespan)
+
+app.include_router(dialog_router)
+logger.info("router registered", extra={"prefix": dialog_router.prefix})
+
+
+@app.exception_handler(DialogNotFoundError)
+async def handle_dialog_not_found(
+    request: Request, exc: DialogNotFoundError
+) -> JSONResponse:
+    """Point handler for a single domain exception — not the unified
+    ApiProblemType-style error format, which is a later milestone
+    ("Устойчивость и наблюдаемость")."""
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
 
 
 @app.get("/health")

@@ -24,3 +24,24 @@ class DialogMessageRead(BaseModel):
     role: str
     content: str
     created_at: datetime
+
+
+class DialogMessageCreateRequest(BaseModel):
+    """API request body for `POST /dialogs/{dialog_id}/messages`.
+
+    Only `content` — `role` is never client-supplied: the service always
+    stores incoming API messages as `"user"`, so a client can't forge a
+    fake `"assistant"`/`"system"` message into the history.
+    """
+
+    content: str
+
+
+class DialogMessageResponse(DialogMessageRead):
+    """API response body — the assistant's reply to the sent message.
+
+    Same shape as `DialogMessageRead`; a distinct, API-facing name per
+    the `Request`/`Response` suffix convention in `.ai-factory/rules/base.md`
+    (which applies to the API layer — `DialogMessageCreate`/`DialogMessageRead`
+    stay the internal repository DTOs).
+    """
