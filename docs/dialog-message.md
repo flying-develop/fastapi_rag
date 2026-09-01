@@ -1,4 +1,4 @@
-[← Модуль dialog](dialog.md) · [Back to README](../README.md)
+[← Модуль dialog](dialog.md) · [Back to README](../README.md) · [Диалоги с LLM: базовый чат →](dialog-chat.md)
 
 # DialogMessage: история сообщений
 
@@ -68,4 +68,5 @@
 
 - [Модуль dialog](dialog.md) — модель `Dialog`, `DialogRepository`, паттерн репозитория
 - [БД и миграции](db.md) — engine/session, Alembic, тесты через Docker
+- [Диалоги с LLM: базовый чат](dialog-chat.md) — LangChain, `DialogService`, API-эндпоинт
 - [Архитектура](../.ai-factory/ARCHITECTURE.md) — структура модуля

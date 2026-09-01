@@ -28,8 +28,9 @@ curl http://localhost:8000/health
 - **Async SQLAlchemy + Alembic** — engine/session (`app/infrastructure/db.py`), миграции — см. [docs/db.md](docs/db.md).
 - **Модуль dialog** — первый доменный модуль (модель, репозиторий, схемы), паттерн для остальных модулей — см. [docs/dialog.md](docs/dialog.md).
 - **История сообщений (DialogMessage)** — модель, репозиторий для истории диалога — см. [docs/dialog-message.md](docs/dialog-message.md).
+- **Диалоги с LLM** — `POST /dialogs/{id}/messages` через LangChain (OpenAI), история сохраняется в PostgreSQL — см. [docs/dialog-chat.md](docs/dialog-chat.md).
 
-Остальные возможности (диалоги с LLM, RAG, task pipeline, модерация)
+Остальные возможности (tool calling, RAG, task pipeline, модерация)
 появляются поэтапно — см. [roadmap](.ai-factory/ROADMAP.md).
 
 ## Пример
@@ -56,6 +57,7 @@ content-type: application/json
 | [БД и миграции](docs/db.md) | Async SQLAlchemy engine/session, Alembic-миграции, тесты через Docker |
 | [Модуль dialog](docs/dialog.md) | Модель, репозиторий, схемы — первый доменный модуль |
 | [DialogMessage](docs/dialog-message.md) | Модель и репозиторий истории сообщений диалога |
+| [Диалоги с LLM](docs/dialog-chat.md) | LangChain, `DialogService`, `POST /dialogs/{id}/messages` |
 | [Архитектура](.ai-factory/ARCHITECTURE.md) | Паттерн Structured Modules, структура папок, правила зависимостей |
 | [Описание проекта](.ai-factory/DESCRIPTION.md) | Цели, стек, вехи |
 | [Roadmap](.ai-factory/ROADMAP.md) | Вехи развития проекта |

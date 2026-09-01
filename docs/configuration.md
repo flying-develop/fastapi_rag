@@ -17,6 +17,7 @@
 | `REDIS_URL` | `redis://redis:6379/0` | Подключение к Redis (используется начиная с вехи фоновых задач) |
 | `QDRANT_URL` | `http://qdrant:6333` | Подключение к Qdrant (используется начиная с вех RAG) |
 | `OPENAI_API_KEY` | — (пусто) | Ключ OpenAI (используется начиная с вехи «Диалоги с LLM») |
+| `OPENAI_CHAT_MODEL` | `gpt-4o-mini` | Название chat-модели OpenAI — см. [Диалоги с LLM](dialog-chat.md) |
 
 ## Хосты в Docker vs локально
 
@@ -30,4 +31,5 @@
 
 - [Быстрый старт](getting-started.md) — установка и запуск
 - [БД и миграции](db.md) — как используется `DATABASE_URL`
+- [Диалоги с LLM](dialog-chat.md) — `OPENAI_API_KEY`/`OPENAI_CHAT_MODEL`
 - [Архитектура](../.ai-factory/ARCHITECTURE.md) — где и как используется конфигурация

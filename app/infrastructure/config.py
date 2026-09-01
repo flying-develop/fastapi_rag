@@ -29,6 +29,7 @@ class Settings(BaseSettings):
 
     # LLM provider (used starting from the "Диалоги с LLM" milestone)
     openai_api_key: str | None = None
+    openai_chat_model: str = "gpt-4o-mini"
 
 
 @lru_cache

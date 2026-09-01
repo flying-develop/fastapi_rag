@@ -24,28 +24,35 @@ AI-сервис на FastAPI + LangChain/LangGraph: диалоги с LLM, RAG �
 ## Структура проекта
 
 Целевая архитектура — Structured Modules (Technical Layer), подробности
-в `.ai-factory/ARCHITECTURE.md`. `dialog` — первый доменный модуль
-(модель, репозиторий, схемы; задаёт паттерн для остальных); RAG,
-tasks, moderation, files появятся на следующих вехах.
+в `.ai-factory/ARCHITECTURE.md`. `dialog` — первый доменный модуль, все
+слои (`api/services/repositories/models/schemas`) задействованы и
+задают паттерн для остальных; RAG, tasks, moderation, files появятся
+на следующих вехах.
 
 ```
 app/
-├── main.py                    # точка входа FastAPI, /health, проверка БД в lifespan
+├── main.py                    # точка входа FastAPI, /health, роутеры, exception handlers
 ├── modules/
-│   └── dialog/                # первый доменный модуль (см. docs/dialog.md, docs/dialog-message.md)
+│   └── dialog/                # первый доменный модуль (см. docs/dialog.md, docs/dialog-message.md, docs/dialog-chat.md)
+│       ├── api/
+│       │   └── router.py       # POST /dialogs/{id}/messages
+│       ├── services/
+│       │   └── dialog_service.py  # DialogService.send_message — история → LLM → сохранить ответ
 │       ├── models/
 │       │   ├── dialog.py       # Dialog(Base)
 │       │   └── dialog_message.py  # DialogMessage(Base) — история сообщений
 │       ├── repositories/
 │       │   ├── dialog_repository.py  # DialogRepository — сквозной CRUD
 │       │   └── dialog_message_repository.py  # DialogMessageRepository — append/list_by_dialog
-│       └── schemas/
-│           ├── dialog.py       # DialogCreate/DialogUpdate/DialogRead
-│           └── dialog_message.py  # DialogMessageCreate/DialogMessageRead
+│       ├── schemas/
+│       │   ├── dialog.py       # DialogCreate/DialogUpdate/DialogRead
+│       │   └── dialog_message.py  # DialogMessageCreate/Read (репозиторий) + CreateRequest/Response (API)
+│       └── exceptions.py       # DialogNotFoundError
 └── infrastructure/
     ├── config.py               # Settings (pydantic-settings), get_settings()
     ├── logging.py               # setup_logging(), структурированный key=value формат
-    └── db.py                    # async engine/session, Base, get_db()
+    ├── db.py                    # async engine/session, Base, get_db()
+    └── llm.py                   # get_chat_model() — LangChain ChatOpenAI за BaseChatModel
 migrations/                    # Alembic (async), env.py читает DATABASE_URL из Settings
 tests/
 ├── conftest.py                # db_session fixture (транзакция + rollback между тестами)
@@ -53,8 +60,11 @@ tests/
 │   └── test_db.py             # тесты engine/session на реальном Postgres из Docker
 └── modules/
     └── dialog/
+        ├── conftest.py             # FakeChatModel — без реальных вызовов OpenAI
         ├── test_dialog_repository.py  # CRUD-тесты DialogRepository
-        └── test_dialog_message_repository.py  # тесты DialogMessageRepository
+        ├── test_dialog_message_repository.py  # тесты DialogMessageRepository
+        ├── test_dialog_service.py     # тесты DialogService (реальная БД + фейковая LLM)
+        └── test_dialog_router.py      # тесты эндпоинта (httpx.AsyncClient + ASGITransport)
 alembic.ini                    # конфиг Alembic (URL переопределяется в migrations/env.py)
 Dockerfile                     # образ приложения (uv, python:3.12-slim)
 docker-compose.yml             # app + postgres + redis + qdrant
@@ -71,6 +81,9 @@ docker-compose.yml             # app + postgres + redis + qdrant
 | `app/infrastructure/db.py` | Async engine/session (`Base`, `get_db()`) |
 | `app/modules/dialog/repositories/dialog_repository.py` | `DialogRepository` — образец repository-паттерна для остальных модулей |
 | `app/modules/dialog/repositories/dialog_message_repository.py` | `DialogMessageRepository` — история сообщений диалога |
+| `app/modules/dialog/services/dialog_service.py` | `DialogService.send_message` — история → LLM → сохранить ответ |
+| `app/modules/dialog/api/router.py` | `POST /dialogs/{id}/messages` — первый API-роут проекта |
+| `app/infrastructure/llm.py` | `get_chat_model()` — LangChain chat-модель за `BaseChatModel` |
 | `migrations/env.py` | Настройка Alembic: URL из `Settings`, `target_metadata = Base.metadata`; импортирует модели каждого модуля для autogenerate |
 | `docker-compose.yml` | Локальное окружение: app + PostgreSQL + Redis + Qdrant |
 
@@ -94,6 +107,7 @@ docker-compose.yml             # app + postgres + redis + qdrant
 | БД и миграции | `docs/db.md` | Async SQLAlchemy engine/session, Alembic, тесты через Docker |
 | Модуль dialog | `docs/dialog.md` | Модель, репозиторий, схемы — первый доменный модуль |
 | DialogMessage | `docs/dialog-message.md` | Модель и репозиторий истории сообщений диалога |
+| Диалоги с LLM | `docs/dialog-chat.md` | LangChain, `DialogService`, `POST /dialogs/{id}/messages` |
 | ARCHITECTURE | `.ai-factory/ARCHITECTURE.md` | Архитектурный паттерн, структура папок, примеры кода |
 | DESCRIPTION | `.ai-factory/DESCRIPTION.md` | Спецификация проекта, стек, архитектурные заметки |
 | Roadmap | `.ai-factory/ROADMAP.md` | Вехи развития проекта |
