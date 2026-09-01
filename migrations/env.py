@@ -9,6 +9,11 @@ from alembic import context
 from app.infrastructure.config import get_settings
 from app.infrastructure.db import Base
 
+# Import every module's ORM models here so they register on `Base.metadata`
+# before autogenerate runs. `Base.metadata` on its own only knows about
+# classes that have actually been imported somewhere in the process.
+from app.modules.dialog.models.dialog import Dialog  # noqa: F401
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config

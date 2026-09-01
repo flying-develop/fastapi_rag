@@ -1,4 +1,4 @@
-[← Конфигурация](configuration.md) · [Back to README](../README.md)
+[← Конфигурация](configuration.md) · [Back to README](../README.md) · [Модуль dialog →](dialog.md)
 
 # База данных и миграции
 
@@ -88,4 +88,5 @@ Postgres из docker-compose — без моков, по общему прави
 
 - [Конфигурация](configuration.md) — переменная `DATABASE_URL` и учётные данные Postgres
 - [Быстрый старт](getting-started.md) — запуск всего стека через Docker
+- [Модуль dialog](dialog.md) — первый доменный модуль поверх этой инфраструктуры
 - [Архитектура](../.ai-factory/ARCHITECTURE.md) — где `app/infrastructure/` в общей структуре

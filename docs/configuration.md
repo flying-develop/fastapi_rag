@@ -12,8 +12,8 @@
 |------------|--------------|----------|
 | `APP_NAME` | `ai-app-python` | Имя приложения (используется как заголовок FastAPI) |
 | `LOG_LEVEL` | `DEBUG` | Уровень логирования (`DEBUG`/`INFO`/`WARNING`/`ERROR`) |
-| `DATABASE_URL` | `postgresql+asyncpg://kwork:kwork@postgres:5432/ai_app` | Строка подключения к PostgreSQL (используется начиная с вехи «Фундамент работы с БД») |
-| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | `kwork` / `kwork` / `ai_app` | Учётные данные для контейнера `postgres`; должны совпадать с `DATABASE_URL` |
+| `DATABASE_URL` | `postgresql+asyncpg://projects:projects@postgres:5432/ai_app` | Строка подключения к PostgreSQL (используется начиная с вехи «Фундамент работы с БД») |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | `projects` / `projects` / `ai_app` | Учётные данные для контейнера `postgres`; должны совпадать с `DATABASE_URL` |
 | `REDIS_URL` | `redis://redis:6379/0` | Подключение к Redis (используется начиная с вехи фоновых задач) |
 | `QDRANT_URL` | `http://qdrant:6333` | Подключение к Qdrant (используется начиная с вех RAG) |
 | `OPENAI_API_KEY` | — (пусто) | Ключ OpenAI (используется начиная с вехи «Диалоги с LLM») |
