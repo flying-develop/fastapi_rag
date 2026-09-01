@@ -37,7 +37,8 @@ app/
 │       ├── api/
 │       │   └── router.py       # POST /dialogs/{id}/messages
 │       ├── services/
-│       │   └── dialog_service.py  # DialogService.send_message — история → LLM → сохранить ответ
+│       │   ├── dialog_service.py  # DialogService.send_message — история → LLM (+ tools) → сохранить ответ
+│       │   └── tools.py            # DIALOG_TOOLS — get_current_time, пример инструмента
 │       ├── models/
 │       │   ├── dialog.py       # Dialog(Base)
 │       │   └── dialog_message.py  # DialogMessage(Base) — история сообщений
@@ -52,19 +53,21 @@ app/
     ├── config.py               # Settings (pydantic-settings), get_settings()
     ├── logging.py               # setup_logging(), структурированный key=value формат
     ├── db.py                    # async engine/session, Base, get_db()
-    └── llm.py                   # get_chat_model() — LangChain ChatOpenAI за BaseChatModel
+    └── llm.py                   # get_chat_model(), invoke_with_tools() — переиспользуемый tool-calling паттерн
 migrations/                    # Alembic (async), env.py читает DATABASE_URL из Settings
 tests/
 ├── conftest.py                # db_session fixture (транзакция + rollback между тестами)
 ├── infrastructure/
-│   └── test_db.py             # тесты engine/session на реальном Postgres из Docker
+│   ├── test_db.py             # тесты engine/session на реальном Postgres из Docker
+│   └── test_llm.py            # тесты invoke_with_tools() — FakeChatModel из tests/modules/dialog/conftest.py
 └── modules/
     └── dialog/
-        ├── conftest.py             # FakeChatModel — без реальных вызовов OpenAI
+        ├── conftest.py             # FakeChatModel — без реальных вызовов OpenAI, поддерживает bind_tools/responses
         ├── test_dialog_repository.py  # CRUD-тесты DialogRepository
         ├── test_dialog_message_repository.py  # тесты DialogMessageRepository
         ├── test_dialog_service.py     # тесты DialogService (реальная БД + фейковая LLM)
-        └── test_dialog_router.py      # тесты эндпоинта (httpx.AsyncClient + ASGITransport)
+        ├── test_dialog_router.py      # тесты эндпоинта (httpx.AsyncClient + ASGITransport)
+        └── test_tools.py              # юнит-тесты get_current_time
 alembic.ini                    # конфиг Alembic (URL переопределяется в migrations/env.py)
 Dockerfile                     # образ приложения (uv, python:3.12-slim)
 docker-compose.yml             # app + postgres + redis + qdrant
@@ -83,7 +86,7 @@ docker-compose.yml             # app + postgres + redis + qdrant
 | `app/modules/dialog/repositories/dialog_message_repository.py` | `DialogMessageRepository` — история сообщений диалога |
 | `app/modules/dialog/services/dialog_service.py` | `DialogService.send_message` — история → LLM → сохранить ответ |
 | `app/modules/dialog/api/router.py` | `POST /dialogs/{id}/messages` — первый API-роут проекта |
-| `app/infrastructure/llm.py` | `get_chat_model()` — LangChain chat-модель за `BaseChatModel` |
+| `app/infrastructure/llm.py` | `get_chat_model()`, `invoke_with_tools()` — переиспользуемый tool-calling паттерн |
 | `migrations/env.py` | Настройка Alembic: URL из `Settings`, `target_metadata = Base.metadata`; импортирует модели каждого модуля для autogenerate |
 | `docker-compose.yml` | Локальное окружение: app + PostgreSQL + Redis + Qdrant |
 
@@ -108,6 +111,7 @@ docker-compose.yml             # app + postgres + redis + qdrant
 | Модуль dialog | `docs/dialog.md` | Модель, репозиторий, схемы — первый доменный модуль |
 | DialogMessage | `docs/dialog-message.md` | Модель и репозиторий истории сообщений диалога |
 | Диалоги с LLM | `docs/dialog-chat.md` | LangChain, `DialogService`, `POST /dialogs/{id}/messages` |
+| Tool calling у LLM | `docs/tool-calling.md` | `invoke_with_tools`, пример-инструмент `get_current_time` |
 | ARCHITECTURE | `.ai-factory/ARCHITECTURE.md` | Архитектурный паттерн, структура папок, примеры кода |
 | DESCRIPTION | `.ai-factory/DESCRIPTION.md` | Спецификация проекта, стек, архитектурные заметки |
 | Roadmap | `.ai-factory/ROADMAP.md` | Вехи развития проекта |

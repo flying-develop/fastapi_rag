@@ -3,6 +3,7 @@ docker-compose (no mocks), with a fake chat model at the LLM boundary
 (no real OpenAI calls; see `tests/modules/dialog/conftest.py`)."""
 
 import pytest
+from langchain_core.messages import AIMessage
 
 from app.modules.dialog.exceptions import DialogNotFoundError
 from app.modules.dialog.repositories.dialog_message_repository import (
@@ -12,6 +13,7 @@ from app.modules.dialog.repositories.dialog_repository import DialogRepository
 from app.modules.dialog.schemas.dialog import DialogCreate
 from app.modules.dialog.schemas.dialog_message import DialogMessageCreate
 from app.modules.dialog.services.dialog_service import DialogService
+from tests.modules.dialog.conftest import FakeChatModel
 
 
 def _make_service(db_session, fake_chat_model) -> DialogService:
@@ -79,3 +81,35 @@ async def test_send_message_raises_when_dialog_missing(
         await service.send_message(999_999, "Hello")
 
     assert fake_chat_model.calls == []
+
+
+async def test_send_message_uses_tool_result_in_final_reply(db_session) -> None:
+    dialog = await DialogRepository(db_session).create(
+        DialogCreate(user_id=1, title="Test dialog")
+    )
+    fake_chat_model = FakeChatModel(
+        responses=[
+            AIMessage(
+                content="",
+                tool_calls=[
+                    {
+                        "name": "get_current_time",
+                        "args": {"timezone": "UTC"},
+                        "id": "call_1",
+                    }
+                ],
+            ),
+            AIMessage(content="It is currently around noon UTC."),
+        ]
+    )
+    service = _make_service(db_session, fake_chat_model)
+
+    reply = await service.send_message(dialog.id, "What time is it?")
+
+    assert reply.content == "It is currently around noon UTC."
+
+    history = await DialogMessageRepository(db_session).list_by_dialog(dialog.id)
+    assert [(m.role, m.content) for m in history] == [
+        ("user", "What time is it?"),
+        ("assistant", "It is currently around noon UTC."),
+    ]

@@ -5,6 +5,7 @@ import logging
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 
+from app.infrastructure.llm import invoke_with_tools
 from app.modules.dialog.exceptions import DialogNotFoundError
 from app.modules.dialog.models.dialog_message import DialogMessage
 from app.modules.dialog.repositories.dialog_message_repository import (
@@ -12,6 +13,7 @@ from app.modules.dialog.repositories.dialog_message_repository import (
 )
 from app.modules.dialog.repositories.dialog_repository import DialogRepository
 from app.modules.dialog.schemas.dialog_message import DialogMessageCreate
+from app.modules.dialog.services.tools import DIALOG_TOOLS
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +58,9 @@ class DialogService:
             extra={"dialog_id": dialog_id, "history_length": len(langchain_messages)},
         )
         try:
-            response = await self._chat_model.ainvoke(langchain_messages)
+            response = await invoke_with_tools(
+                self._chat_model, DIALOG_TOOLS, langchain_messages
+            )
         except Exception as exc:
             logger.error(
                 "chat model call failed",
