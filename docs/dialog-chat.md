@@ -1,4 +1,4 @@
-[← DialogMessage](dialog-message.md) · [Back to README](../README.md)
+[← DialogMessage](dialog-message.md) · [Back to README](../README.md) · [Tool calling у LLM →](tool-calling.md)
 
 # Диалоги с LLM: базовый чат
 
@@ -113,5 +113,6 @@ event loop, что и сам тест.
 
 - [Модуль dialog](dialog.md) — модель `Dialog`, `DialogRepository`
 - [DialogMessage](dialog-message.md) — модель и репозиторий истории
+- [Tool calling у LLM](tool-calling.md) — `invoke_with_tools`, пример-инструмент `get_current_time`
 - [Конфигурация](configuration.md) — `OPENAI_API_KEY`/`OPENAI_CHAT_MODEL`
 - [Архитектура](../.ai-factory/ARCHITECTURE.md) — паттерн Structured Modules
