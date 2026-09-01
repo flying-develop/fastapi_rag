@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     log_level: str = "DEBUG"
 
     # Database (used starting from the "Фундамент работы с БД" milestone)
-    database_url: str = "postgresql+asyncpg://kwork:kwork@localhost:5432/ai_app"
+    database_url: str = "postgresql+asyncpg://projects:projects@localhost:5432/ai_app"
 
     # Redis (used starting from the ARQ background-jobs milestone)
     redis_url: str = "redis://localhost:6379/0"

@@ -64,4 +64,5 @@ curl http://localhost:8000/health
 
 - [Конфигурация](configuration.md) — переменные окружения
 - [БД и миграции](db.md) — engine/session, Alembic, тесты через Docker
+- [Модуль dialog](dialog.md) — первый доменный модуль
 - [Архитектура](../.ai-factory/ARCHITECTURE.md) — структура проекта

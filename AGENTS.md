@@ -5,10 +5,9 @@
 
 ## Обзор проекта
 
-Учебный перенос AI-сервиса с Laravel (`~/projects/kwork/ai-app`) на
-FastAPI + LangChain/LangGraph: диалоги с LLM, RAG по статьям, конвейер
-обработки задач и модерация контента. Подробности — в
-`.ai-factory/DESCRIPTION.md`.
+AI-сервис на FastAPI + LangChain/LangGraph: диалоги с LLM, RAG по
+статьям, конвейер обработки задач и модерация контента. Подробности —
+в `.ai-factory/DESCRIPTION.md`.
 
 ## Технологический стек
 
@@ -24,25 +23,34 @@ FastAPI + LangChain/LangGraph: диалоги с LLM, RAG по статьям, �
 
 ## Структура проекта
 
-В процессе вехи «Фундамент работы с БД» (см. `.ai-factory/ROADMAP.md`,
-план `db-foundation-sqlalchemy-alembic`). Целевая архитектура —
-Structured Modules (Technical Layer), подробности в
-`.ai-factory/ARCHITECTURE.md`; `app/modules/` пока пустой — домены
-(dialog, rag, tasks, moderation, files) появятся на следующих вехах,
-начиная с `dialog` (следующий план этой же вехи).
+Целевая архитектура — Structured Modules (Technical Layer), подробности
+в `.ai-factory/ARCHITECTURE.md`. `dialog` — первый доменный модуль
+(модель, репозиторий, схемы; задаёт паттерн для остальных); RAG,
+tasks, moderation, files появятся на следующих вехах.
 
 ```
 app/
 ├── main.py                    # точка входа FastAPI, /health, проверка БД в lifespan
-├── modules/                   # доменные модули (пока пусто, см. ARCHITECTURE.md)
+├── modules/
+│   └── dialog/                # первый доменный модуль (см. docs/dialog.md)
+│       ├── models/
+│       │   └── dialog.py       # Dialog(Base)
+│       ├── repositories/
+│       │   └── dialog_repository.py  # DialogRepository — сквозной CRUD
+│       └── schemas/
+│           └── dialog.py       # DialogCreate/DialogUpdate/DialogRead
 └── infrastructure/
     ├── config.py               # Settings (pydantic-settings), get_settings()
     ├── logging.py               # setup_logging(), структурированный key=value формат
     └── db.py                    # async engine/session, Base, get_db()
 migrations/                    # Alembic (async), env.py читает DATABASE_URL из Settings
 tests/
-└── infrastructure/
-    └── test_db.py               # тесты engine/session на реальном Postgres из Docker
+├── conftest.py                # db_session fixture (транзакция + rollback между тестами)
+├── infrastructure/
+│   └── test_db.py             # тесты engine/session на реальном Postgres из Docker
+└── modules/
+    └── dialog/
+        └── test_dialog_repository.py  # CRUD-тесты DialogRepository
 alembic.ini                    # конфиг Alembic (URL переопределяется в migrations/env.py)
 Dockerfile                     # образ приложения (uv, python:3.12-slim)
 docker-compose.yml             # app + postgres + redis + qdrant
@@ -57,7 +65,8 @@ docker-compose.yml             # app + postgres + redis + qdrant
 | `app/infrastructure/config.py` | Настройки приложения (`Settings`, `get_settings()`) |
 | `app/infrastructure/logging.py` | Структурированное логирование (`setup_logging()`) |
 | `app/infrastructure/db.py` | Async engine/session (`Base`, `get_db()`) |
-| `migrations/env.py` | Настройка Alembic: URL из `Settings`, `target_metadata = Base.metadata` |
+| `app/modules/dialog/repositories/dialog_repository.py` | `DialogRepository` — образец repository-паттерна для остальных модулей |
+| `migrations/env.py` | Настройка Alembic: URL из `Settings`, `target_metadata = Base.metadata`; импортирует модели каждого модуля для autogenerate |
 | `docker-compose.yml` | Локальное окружение: app + PostgreSQL + Redis + Qdrant |
 
 ## Тесты и миграции — только через Docker
@@ -78,9 +87,10 @@ docker-compose.yml             # app + postgres + redis + qdrant
 | Быстрый старт | `docs/getting-started.md` | Установка, запуск через Docker и локально |
 | Конфигурация | `docs/configuration.md` | Переменные окружения |
 | БД и миграции | `docs/db.md` | Async SQLAlchemy engine/session, Alembic, тесты через Docker |
+| Модуль dialog | `docs/dialog.md` | Модель, репозиторий, схемы — первый доменный модуль |
 | ARCHITECTURE | `.ai-factory/ARCHITECTURE.md` | Архитектурный паттерн, структура папок, примеры кода |
 | DESCRIPTION | `.ai-factory/DESCRIPTION.md` | Спецификация проекта, стек, архитектурные заметки |
-| Roadmap | `.ai-factory/ROADMAP.md` | Вехи переноса с Laravel |
+| Roadmap | `.ai-factory/ROADMAP.md` | Вехи развития проекта |
 | Базовые правила | `.ai-factory/rules/base.md` | Конвенции именования, структура модулей, обработка ошибок |
 
 ## AI Context Files

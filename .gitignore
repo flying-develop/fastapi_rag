@@ -12,7 +12,6 @@ wheels/
 # Environment variables (secrets)
 .env
 
-.ai-factory
+.ai-factory/PLAN.md
 .claude
 .codex
-.ai-factory.json

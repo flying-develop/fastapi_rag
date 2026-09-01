@@ -1,11 +1,10 @@
 # ai-app-python
 
-> Учебный перенос AI-сервиса с Laravel на FastAPI + LangChain/LangGraph.
+> AI-сервис на FastAPI + LangChain/LangGraph: диалоги с LLM, RAG по
+> статьям, модерация контента.
 
-Python-версия действующего AI-сервиса (RAG по статьям, диалоги с LLM,
-модерация контента) с Laravel — переносится поэтапно как способ
-изучить Python, FastAPI, LangChain, LangGraph и работу с базой данных
-на Python. Полное описание целей и вех — в
+Сервис развивается поэтапно, от простого ядра к сложным сценариям.
+Полное описание целей и вех — в
 [.ai-factory/DESCRIPTION.md](.ai-factory/DESCRIPTION.md) и
 [.ai-factory/ROADMAP.md](.ai-factory/ROADMAP.md).
 
@@ -27,6 +26,7 @@ curl http://localhost:8000/health
 - **Структурированное логирование** — уровень управляется `LOG_LEVEL`.
 - **Локальное окружение в Docker** — `app` + PostgreSQL + Redis + Qdrant одной командой.
 - **Async SQLAlchemy + Alembic** — engine/session (`app/infrastructure/db.py`), миграции — см. [docs/db.md](docs/db.md).
+- **Модуль dialog** — первый доменный модуль (модель, репозиторий, схемы), паттерн для остальных модулей — см. [docs/dialog.md](docs/dialog.md).
 
 Остальные возможности (диалоги с LLM, RAG, task pipeline, модерация)
 появляются поэтапно — см. [roadmap](.ai-factory/ROADMAP.md).
@@ -53,10 +53,11 @@ content-type: application/json
 | [Быстрый старт](docs/getting-started.md) | Установка, запуск через Docker и локально |
 | [Конфигурация](docs/configuration.md) | Переменные окружения |
 | [БД и миграции](docs/db.md) | Async SQLAlchemy engine/session, Alembic-миграции, тесты через Docker |
+| [Модуль dialog](docs/dialog.md) | Модель, репозиторий, схемы — первый доменный модуль |
 | [Архитектура](.ai-factory/ARCHITECTURE.md) | Паттерн Structured Modules, структура папок, правила зависимостей |
 | [Описание проекта](.ai-factory/DESCRIPTION.md) | Цели, стек, вехи |
-| [Roadmap](.ai-factory/ROADMAP.md) | Вехи переноса с Laravel |
+| [Roadmap](.ai-factory/ROADMAP.md) | Вехи развития проекта |
 
 ## Лицензия
 
-Личный учебный проект, без формальной лицензии.
+Личный проект, без формальной лицензии.

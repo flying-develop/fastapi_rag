@@ -25,5 +25,12 @@ asyncio_mode = "auto"
 # all tests must share a single event loop — otherwise pooled asyncpg
 # connections end up bound to a closed loop from a previous test.
 asyncio_default_test_loop_scope = "session"
+# Async fixtures (e.g. tests/conftest.py::db_session) get their own event
+# loop scope independently of the test loop scope above — defaults to
+# function-scoped, which reuses a pooled asyncpg connection created under
+# the session loop from a fixture running on a different (closed) loop and
+# fails with "Future attached to a different loop". Must match the test
+# loop scope for the same reason as asyncio_default_test_loop_scope.
+asyncio_default_fixture_loop_scope = "session"
 testpaths = ["tests"]
 pythonpath = ["."]
