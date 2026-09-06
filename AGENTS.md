@@ -50,13 +50,14 @@ app/
 │       │   ├── dialog.py       # DialogCreate/DialogUpdate/DialogRead
 │       │   └── dialog_message.py  # DialogMessageCreate/Read (репозиторий) + CreateRequest/Response (API)
 │       └── exceptions.py       # DialogNotFoundError
-│   └── files/                  # второй доменный модуль (см. docs/files.md) — приём/хранение файлов
+│   └── files/                  # второй доменный модуль (см. docs/files.md) — приём/хранение/парсинг файлов
 │       ├── api/
-│       │   └── router.py       # POST /files, GET /files/{id}
+│       │   └── router.py       # POST /files, GET /files/{id}, GET /files/{id}/metadata
 │       ├── services/
-│       │   └── file_service.py    # FileService.upload_file/download_file — S3 + метаданные в БД
+│       │   ├── file_service.py    # FileService.upload_file/download_file/get_metadata — S3 + парсинг + метаданные в БД
+│       │   └── file_parser.py     # parse_to_text() — PDF/DOCX/XLSX → текст, остальное игнорируется
 │       ├── models/
-│       │   └── file.py         # File(Base) — метаданные (filename, content_type, size_bytes, storage_key)
+│       │   └── file.py         # File(Base) — метаданные (filename, content_type, size_bytes, storage_key, extracted_text, parse_status)
 │       ├── repositories/
 │       │   └── file_repository.py  # FileRepository — create/get_by_id
 │       ├── schemas/
@@ -85,8 +86,9 @@ tests/
     │   ├── test_graph.py              # тесты build_dialog_graph() — agent/tools, многошаговый tool calling, FakeChatModel, без БД
     │   └── test_tools.py              # юнит-тесты get_current_time
     └── files/
+        ├── test_file_parser.py      # тесты parse_to_text() — PDF/DOCX/XLSX генерируются в памяти, без БД/MinIO
         ├── test_file_repository.py  # CRUD-тесты FileRepository (реальная БД)
-        ├── test_file_service.py     # тесты FileService (реальные MinIO + БД)
+        ├── test_file_service.py     # тесты FileService (реальные MinIO + БД), включая парсинг при загрузке
         └── test_file_router.py      # тесты эндпоинтов (httpx.AsyncClient + ASGITransport, реальные MinIO + БД)
 alembic.ini                    # конфиг Alembic (URL переопределяется в migrations/env.py)
 Dockerfile                     # образ приложения (uv, python:3.12-slim)
@@ -109,8 +111,9 @@ docker-compose.yml             # app + postgres + redis + qdrant + minio
 | `app/modules/dialog/api/router.py` | `POST /dialogs/{id}/messages` — первый API-роут проекта |
 | `app/infrastructure/llm.py` | `get_chat_model()`, `execute_tool_calls()`, `invoke_with_tools()` — переиспользуемый tool-calling паттерн |
 | `app/infrastructure/s3.py` | `ensure_bucket_exists()`, `upload_file()`, `download_file()` — async S3-клиент (`aioboto3`) |
-| `app/modules/files/services/file_service.py` | `FileService.upload_file/download_file` — S3 + метаданные в БД |
-| `app/modules/files/api/router.py` | `POST /files`, `GET /files/{id}` |
+| `app/modules/files/services/file_service.py` | `FileService.upload_file/download_file/get_metadata` — S3 + парсинг + метаданные в БД |
+| `app/modules/files/services/file_parser.py` | `parse_to_text()` — PDF/DOCX/XLSX → плоский текст, остальное игнорируется |
+| `app/modules/files/api/router.py` | `POST /files`, `GET /files/{id}`, `GET /files/{id}/metadata` |
 | `migrations/env.py` | Настройка Alembic: URL из `Settings`, `target_metadata = Base.metadata`; импортирует модели каждого модуля для autogenerate |
 | `docker-compose.yml` | Локальное окружение: app + PostgreSQL + Redis + Qdrant + MinIO |
 
@@ -137,7 +140,7 @@ docker-compose.yml             # app + postgres + redis + qdrant + minio
 | Диалоги с LLM | `docs/dialog-chat.md` | LangChain, `DialogService`, `POST /dialogs/{id}/messages` |
 | Tool calling у LLM | `docs/tool-calling.md` | `invoke_with_tools`, пример-инструмент `get_current_time` |
 | Диалог как граф LangGraph | `docs/dialog-graph.md` | `DialogState`, узлы `agent`/`tools`, `build_dialog_graph()` |
-| Работа с файлами | `docs/files.md` | Модель `File`, S3-клиент (MinIO), `FileService`, `POST /files`/`GET /files/{id}` |
+| Работа с файлами | `docs/files.md` | Модель `File`, S3-клиент (MinIO), парсинг PDF/DOCX/XLSX в текст, `FileService`, эндпоинты `/files` |
 | ARCHITECTURE | `.ai-factory/ARCHITECTURE.md` | Архитектурный паттерн, структура папок, примеры кода |
 | DESCRIPTION | `.ai-factory/DESCRIPTION.md` | Спецификация проекта, стек, архитектурные заметки |
 | Roadmap | `.ai-factory/ROADMAP.md` | Вехи развития проекта |

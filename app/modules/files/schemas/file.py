@@ -12,6 +12,8 @@ class FileCreate(BaseModel):
     content_type: str
     size_bytes: int
     storage_key: str
+    extracted_text: str | None
+    parse_status: str
 
 
 class FileResponse(BaseModel):
@@ -27,4 +29,6 @@ class FileResponse(BaseModel):
     filename: str
     content_type: str
     size_bytes: int
+    extracted_text: str | None
+    parse_status: str
     created_at: datetime

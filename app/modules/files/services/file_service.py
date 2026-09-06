@@ -1,5 +1,6 @@
 """Use cases orchestrating `File` metadata with S3-compatible storage."""
 
+import asyncio
 import logging
 from pathlib import Path
 from uuid import uuid4
@@ -10,6 +11,7 @@ from app.modules.files.exceptions import StoredFileNotFoundError
 from app.modules.files.models.file import File
 from app.modules.files.repositories.file_repository import FileRepository
 from app.modules.files.schemas.file import FileCreate
+from app.modules.files.services.file_parser import parse_to_text
 
 logger = logging.getLogger(__name__)
 
@@ -47,12 +49,23 @@ class FileService:
             )
             raise
 
+        # `pypdf`/`python-docx`/`openpyxl` are sync libraries and can be
+        # CPU-heavy on large files — run off the event loop, same
+        # reasoning as sync tool functions inside `invoke_with_tools()`
+        # (see `docs/tool-calling.md`). Never fails the upload: parser
+        # failures come back as `parse_status="failed"`, not an exception.
+        extracted_text, parse_status = await asyncio.to_thread(
+            parse_to_text, content_type, data
+        )
+
         file = await self._file_repository.create(
             FileCreate(
                 filename=filename,
                 content_type=content_type,
                 size_bytes=len(data),
                 storage_key=storage_key,
+                extracted_text=extracted_text,
+                parse_status=parse_status,
             )
         )
         logger.info(
@@ -61,8 +74,18 @@ class FileService:
                 "file_id": file.id,
                 "uploaded_filename": filename,
                 "size_bytes": len(data),
+                "parse_status": parse_status,
             },
         )
+        return file
+
+    async def get_metadata(self, file_id: int) -> File:
+        """Return `File` metadata without touching S3 — for endpoints
+        that only need `extracted_text`/`parse_status`/etc., not the
+        raw bytes (`download_file()` below is for that)."""
+        file = await self._file_repository.get_by_id(file_id)
+        if file is None:
+            raise StoredFileNotFoundError(file_id)
         return file
 
     async def download_file(self, file_id: int) -> tuple[File, bytes]:

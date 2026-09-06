@@ -57,3 +57,26 @@ async def test_download_returns_404_for_missing_file(client) -> None:
 
     assert response.status_code == 404
     assert response.json()["detail"] == "File 999999 not found"
+
+
+async def test_get_metadata_returns_parse_result(client) -> None:
+    upload_response = await client.post(
+        "/files",
+        files={"file": ("notes.txt", b"hello world", "text/plain")},
+    )
+    file_id = upload_response.json()["id"]
+
+    response = await client.get(f"/files/{file_id}/metadata")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == file_id
+    assert body["parse_status"] == "skipped"
+    assert body["extracted_text"] is None
+
+
+async def test_get_metadata_returns_404_for_missing_file(client) -> None:
+    response = await client.get("/files/999999/metadata")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "File 999999 not found"
