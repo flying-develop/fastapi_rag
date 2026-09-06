@@ -1,4 +1,4 @@
-[← Tool calling у LLM](tool-calling.md) · [Back to README](../README.md)
+[← Tool calling у LLM](tool-calling.md) · [Back to README](../README.md) · [Работа с файлами →](files.md)
 
 # Диалог как граф LangGraph
 

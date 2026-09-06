@@ -18,6 +18,8 @@
 | `QDRANT_URL` | `http://qdrant:6333` | Подключение к Qdrant (используется начиная с вех RAG) |
 | `OPENAI_API_KEY` | — (пусто) | Ключ OpenAI (используется начиная с вехи «Диалоги с LLM») |
 | `OPENAI_CHAT_MODEL` | `gpt-4o-mini` | Название chat-модели OpenAI — см. [Диалоги с LLM](dialog-chat.md) |
+| `S3_ENDPOINT_URL` / `S3_ACCESS_KEY` / `S3_SECRET_KEY` / `S3_BUCKET` / `S3_REGION` | `http://minio:9000` / `minioadmin` / `minioadmin` / `files` / `us-east-1` | S3-совместимое хранилище (используется начиная с вехи «Работа с файлами») — см. [Работа с файлами](files.md) |
+| `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | `minioadmin` / `minioadmin` | Учётные данные для контейнера `minio`; должны совпадать с `S3_ACCESS_KEY`/`S3_SECRET_KEY` |
 
 ## Хосты в Docker vs локально
 
@@ -32,4 +34,5 @@
 - [Быстрый старт](getting-started.md) — установка и запуск
 - [БД и миграции](db.md) — как используется `DATABASE_URL`
 - [Диалоги с LLM](dialog-chat.md) — `OPENAI_API_KEY`/`OPENAI_CHAT_MODEL`
+- [Работа с файлами](files.md) — `S3_*`/`MINIO_*`
 - [Архитектура](../.ai-factory/ARCHITECTURE.md) — где и как используется конфигурация

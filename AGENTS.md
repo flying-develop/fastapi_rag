@@ -26,8 +26,8 @@ AI-сервис на FastAPI + LangChain/LangGraph: диалоги с LLM, RAG �
 Целевая архитектура — Structured Modules (Technical Layer), подробности
 в `.ai-factory/ARCHITECTURE.md`. `dialog` — первый доменный модуль, все
 слои (`api/services/repositories/models/schemas`) задействованы и
-задают паттерн для остальных; RAG, tasks, moderation, files появятся
-на следующих вехах.
+задают паттерн для остальных; `files` — второй модуль по тому же
+паттерну; RAG, tasks, moderation появятся на следующих вехах.
 
 ```
 app/
@@ -50,29 +50,47 @@ app/
 │       │   ├── dialog.py       # DialogCreate/DialogUpdate/DialogRead
 │       │   └── dialog_message.py  # DialogMessageCreate/Read (репозиторий) + CreateRequest/Response (API)
 │       └── exceptions.py       # DialogNotFoundError
+│   └── files/                  # второй доменный модуль (см. docs/files.md) — приём/хранение файлов
+│       ├── api/
+│       │   └── router.py       # POST /files, GET /files/{id}
+│       ├── services/
+│       │   └── file_service.py    # FileService.upload_file/download_file — S3 + метаданные в БД
+│       ├── models/
+│       │   └── file.py         # File(Base) — метаданные (filename, content_type, size_bytes, storage_key)
+│       ├── repositories/
+│       │   └── file_repository.py  # FileRepository — create/get_by_id
+│       ├── schemas/
+│       │   └── file.py         # FileCreate (репозиторий) + FileResponse (API)
+│       └── exceptions.py       # StoredFileNotFoundError (не FileNotFoundError — не затенять builtin)
 └── infrastructure/
     ├── config.py               # Settings (pydantic-settings), get_settings()
     ├── logging.py               # setup_logging(), структурированный key=value формат
     ├── db.py                    # async engine/session, Base, get_db()
-    └── llm.py                   # get_chat_model(), execute_tool_calls(), invoke_with_tools() — переиспользуемый tool-calling паттерн
+    ├── llm.py                   # get_chat_model(), execute_tool_calls(), invoke_with_tools() — переиспользуемый tool-calling паттерн
+    └── s3.py                    # ensure_bucket_exists()/upload_file()/download_file() — async S3-клиент (aioboto3, MinIO локально)
 migrations/                    # Alembic (async), env.py читает DATABASE_URL из Settings
 tests/
 ├── conftest.py                # db_session fixture (транзакция + rollback между тестами)
 ├── infrastructure/
 │   ├── test_db.py             # тесты engine/session на реальном Postgres из Docker
-│   └── test_llm.py            # тесты invoke_with_tools()/execute_tool_calls() — FakeChatModel из tests/modules/dialog/conftest.py
+│   ├── test_llm.py            # тесты invoke_with_tools()/execute_tool_calls() — FakeChatModel из tests/modules/dialog/conftest.py
+│   └── test_s3.py             # тесты S3-клиента на реальном MinIO из Docker
 └── modules/
-    └── dialog/
-        ├── conftest.py             # FakeChatModel — без реальных вызовов OpenAI, поддерживает bind_tools/responses
-        ├── test_dialog_repository.py  # CRUD-тесты DialogRepository
-        ├── test_dialog_message_repository.py  # тесты DialogMessageRepository
-        ├── test_dialog_service.py     # тесты DialogService (реальная БД + фейковая LLM)
-        ├── test_dialog_router.py      # тесты эндпоинта (httpx.AsyncClient + ASGITransport)
-        ├── test_graph.py              # тесты build_dialog_graph() — agent/tools, многошаговый tool calling, FakeChatModel, без БД
-        └── test_tools.py              # юнит-тесты get_current_time
+    ├── dialog/
+    │   ├── conftest.py             # FakeChatModel — без реальных вызовов OpenAI, поддерживает bind_tools/responses
+    │   ├── test_dialog_repository.py  # CRUD-тесты DialogRepository
+    │   ├── test_dialog_message_repository.py  # тесты DialogMessageRepository
+    │   ├── test_dialog_service.py     # тесты DialogService (реальная БД + фейковая LLM)
+    │   ├── test_dialog_router.py      # тесты эндпоинта (httpx.AsyncClient + ASGITransport)
+    │   ├── test_graph.py              # тесты build_dialog_graph() — agent/tools, многошаговый tool calling, FakeChatModel, без БД
+    │   └── test_tools.py              # юнит-тесты get_current_time
+    └── files/
+        ├── test_file_repository.py  # CRUD-тесты FileRepository (реальная БД)
+        ├── test_file_service.py     # тесты FileService (реальные MinIO + БД)
+        └── test_file_router.py      # тесты эндпоинтов (httpx.AsyncClient + ASGITransport, реальные MinIO + БД)
 alembic.ini                    # конфиг Alembic (URL переопределяется в migrations/env.py)
 Dockerfile                     # образ приложения (uv, python:3.12-slim)
-docker-compose.yml             # app + postgres + redis + qdrant
+docker-compose.yml             # app + postgres + redis + qdrant + minio
 .env.example                   # шаблон переменных окружения
 ```
 
@@ -80,7 +98,7 @@ docker-compose.yml             # app + postgres + redis + qdrant
 
 | Файл | Назначение |
 |------|------------|
-| `app/main.py` | FastAPI-приложение, lifespan (логирование + проверка БД при старте), `/health` |
+| `app/main.py` | FastAPI-приложение, lifespan (логирование + проверка БД и S3-бакета при старте), `/health` |
 | `app/infrastructure/config.py` | Настройки приложения (`Settings`, `get_settings()`) |
 | `app/infrastructure/logging.py` | Структурированное логирование (`setup_logging()`) |
 | `app/infrastructure/db.py` | Async engine/session (`Base`, `get_db()`) |
@@ -90,13 +108,16 @@ docker-compose.yml             # app + postgres + redis + qdrant
 | `app/modules/dialog/services/graph.py` | `build_dialog_graph()` — LangGraph-граф диалога (состояние `DialogState`, узлы `agent`/`tools`, условное рёбро) |
 | `app/modules/dialog/api/router.py` | `POST /dialogs/{id}/messages` — первый API-роут проекта |
 | `app/infrastructure/llm.py` | `get_chat_model()`, `execute_tool_calls()`, `invoke_with_tools()` — переиспользуемый tool-calling паттерн |
+| `app/infrastructure/s3.py` | `ensure_bucket_exists()`, `upload_file()`, `download_file()` — async S3-клиент (`aioboto3`) |
+| `app/modules/files/services/file_service.py` | `FileService.upload_file/download_file` — S3 + метаданные в БД |
+| `app/modules/files/api/router.py` | `POST /files`, `GET /files/{id}` |
 | `migrations/env.py` | Настройка Alembic: URL из `Settings`, `target_metadata = Base.metadata`; импортирует модели каждого модуля для autogenerate |
-| `docker-compose.yml` | Локальное окружение: app + PostgreSQL + Redis + Qdrant |
+| `docker-compose.yml` | Локальное окружение: app + PostgreSQL + Redis + Qdrant + MinIO |
 
 ## Тесты и миграции — только через Docker
 
-- Тесты: `docker compose up -d postgres`, затем
-  `docker compose run --rm app uv run pytest` (реальная БД, без моков).
+- Тесты: `docker compose up -d postgres minio`, затем
+  `docker compose run --rm app uv run pytest` (реальные БД/MinIO, без моков).
 - Миграции: `docker compose run --rm app uv run alembic upgrade head`
   (или `downgrade <rev>`). Для генерации новой ревизии на хосте нужен
   bind-mount `migrations/`, иначе файл создастся только внутри
@@ -115,7 +136,8 @@ docker-compose.yml             # app + postgres + redis + qdrant
 | DialogMessage | `docs/dialog-message.md` | Модель и репозиторий истории сообщений диалога |
 | Диалоги с LLM | `docs/dialog-chat.md` | LangChain, `DialogService`, `POST /dialogs/{id}/messages` |
 | Tool calling у LLM | `docs/tool-calling.md` | `invoke_with_tools`, пример-инструмент `get_current_time` |
-| Диалог как граф LangGraph | `docs/dialog-graph.md` | `DialogState`, узел `agent`, `build_dialog_graph()` |
+| Диалог как граф LangGraph | `docs/dialog-graph.md` | `DialogState`, узлы `agent`/`tools`, `build_dialog_graph()` |
+| Работа с файлами | `docs/files.md` | Модель `File`, S3-клиент (MinIO), `FileService`, `POST /files`/`GET /files/{id}` |
 | ARCHITECTURE | `.ai-factory/ARCHITECTURE.md` | Архитектурный паттерн, структура папок, примеры кода |
 | DESCRIPTION | `.ai-factory/DESCRIPTION.md` | Спецификация проекта, стек, архитектурные заметки |
 | Roadmap | `.ai-factory/ROADMAP.md` | Вехи развития проекта |

@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.12"
 dependencies = [
+    "aioboto3>=15.5.0",
     "alembic>=1.19.1",
     "asyncpg>=0.31.0",
     "fastapi>=0.141.1",
@@ -11,6 +12,7 @@ dependencies = [
     "langchain-openai>=1.6.0",
     "langgraph>=1.2.11",
     "pydantic-settings>=2.15.0",
+    "python-multipart>=0.0.32",
     "sqlalchemy[asyncio]>=2.0.52",
     "uvicorn[standard]>=0.52.4",
 ]
