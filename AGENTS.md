@@ -37,7 +37,8 @@ app/
 │       ├── api/
 │       │   └── router.py       # POST /dialogs/{id}/messages
 │       ├── services/
-│       │   ├── dialog_service.py  # DialogService.send_message — история → LLM (+ tools) → сохранить ответ
+│       │   ├── dialog_service.py  # DialogService.send_message — история → граф LangGraph → сохранить ответ
+│       │   ├── graph.py            # build_dialog_graph() — LangGraph-граф диалога (пока один узел agent)
 │       │   └── tools.py            # DIALOG_TOOLS — get_current_time, пример инструмента
 │       ├── models/
 │       │   ├── dialog.py       # Dialog(Base)
@@ -67,6 +68,7 @@ tests/
         ├── test_dialog_message_repository.py  # тесты DialogMessageRepository
         ├── test_dialog_service.py     # тесты DialogService (реальная БД + фейковая LLM)
         ├── test_dialog_router.py      # тесты эндпоинта (httpx.AsyncClient + ASGITransport)
+        ├── test_graph.py              # тесты build_dialog_graph() — FakeChatModel, без БД
         └── test_tools.py              # юнит-тесты get_current_time
 alembic.ini                    # конфиг Alembic (URL переопределяется в migrations/env.py)
 Dockerfile                     # образ приложения (uv, python:3.12-slim)
@@ -84,7 +86,8 @@ docker-compose.yml             # app + postgres + redis + qdrant
 | `app/infrastructure/db.py` | Async engine/session (`Base`, `get_db()`) |
 | `app/modules/dialog/repositories/dialog_repository.py` | `DialogRepository` — образец repository-паттерна для остальных модулей |
 | `app/modules/dialog/repositories/dialog_message_repository.py` | `DialogMessageRepository` — история сообщений диалога |
-| `app/modules/dialog/services/dialog_service.py` | `DialogService.send_message` — история → LLM → сохранить ответ |
+| `app/modules/dialog/services/dialog_service.py` | `DialogService.send_message` — история → граф LangGraph → сохранить ответ |
+| `app/modules/dialog/services/graph.py` | `build_dialog_graph()` — LangGraph-граф диалога (состояние `DialogState`, узел `agent`) |
 | `app/modules/dialog/api/router.py` | `POST /dialogs/{id}/messages` — первый API-роут проекта |
 | `app/infrastructure/llm.py` | `get_chat_model()`, `invoke_with_tools()` — переиспользуемый tool-calling паттерн |
 | `migrations/env.py` | Настройка Alembic: URL из `Settings`, `target_metadata = Base.metadata`; импортирует модели каждого модуля для autogenerate |
@@ -112,6 +115,7 @@ docker-compose.yml             # app + postgres + redis + qdrant
 | DialogMessage | `docs/dialog-message.md` | Модель и репозиторий истории сообщений диалога |
 | Диалоги с LLM | `docs/dialog-chat.md` | LangChain, `DialogService`, `POST /dialogs/{id}/messages` |
 | Tool calling у LLM | `docs/tool-calling.md` | `invoke_with_tools`, пример-инструмент `get_current_time` |
+| Диалог как граф LangGraph | `docs/dialog-graph.md` | `DialogState`, узел `agent`, `build_dialog_graph()` |
 | ARCHITECTURE | `.ai-factory/ARCHITECTURE.md` | Архитектурный паттерн, структура папок, примеры кода |
 | DESCRIPTION | `.ai-factory/DESCRIPTION.md` | Спецификация проекта, стек, архитектурные заметки |
 | Roadmap | `.ai-factory/ROADMAP.md` | Вехи развития проекта |
