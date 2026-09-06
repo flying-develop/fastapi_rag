@@ -12,8 +12,11 @@ from starlette.requests import Request
 from app.infrastructure.config import get_settings
 from app.infrastructure.db import engine
 from app.infrastructure.logging import setup_logging
+from app.infrastructure.s3 import ensure_bucket_exists
 from app.modules.dialog.api.router import router as dialog_router
 from app.modules.dialog.exceptions import DialogNotFoundError
+from app.modules.files.api.router import router as files_router
+from app.modules.files.exceptions import StoredFileNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +39,23 @@ async def _check_db_connection() -> None:
         )
 
 
+async def _check_s3_bucket() -> None:
+    """Ensure the configured S3/MinIO bucket exists at startup.
+
+    Non-fatal, same reasoning as `_check_db_connection()`: a failure here
+    (e.g. MinIO not reachable yet) is logged as ERROR and startup
+    continues rather than crashing the application.
+    """
+    try:
+        await ensure_bucket_exists()
+        logger.info("s3 bucket check passed")
+    except Exception as exc:
+        logger.error(
+            "s3 bucket check failed",
+            extra={"error_type": type(exc).__name__, "error": str(exc)},
+        )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
@@ -45,6 +65,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         extra={"app_name": settings.app_name, "log_level": settings.log_level},
     )
     await _check_db_connection()
+    await _check_s3_bucket()
     logger.debug("health endpoint ready", extra={"path": "/health"})
     yield
     await engine.dispose()
@@ -56,6 +77,9 @@ app = FastAPI(title=get_settings().app_name, lifespan=lifespan)
 app.include_router(dialog_router)
 logger.info("router registered", extra={"prefix": dialog_router.prefix})
 
+app.include_router(files_router)
+logger.info("router registered", extra={"prefix": files_router.prefix})
+
 
 @app.exception_handler(DialogNotFoundError)
 async def handle_dialog_not_found(
@@ -64,6 +88,14 @@ async def handle_dialog_not_found(
     """Point handler for a single domain exception — not the unified
     ApiProblemType-style error format, which is a later milestone
     ("Устойчивость и наблюдаемость")."""
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(StoredFileNotFoundError)
+async def handle_file_not_found(
+    request: Request, exc: StoredFileNotFoundError
+) -> JSONResponse:
+    """Point handler, same reasoning as `handle_dialog_not_found()` above."""
     return JSONResponse(status_code=404, content={"detail": str(exc)})
 
 

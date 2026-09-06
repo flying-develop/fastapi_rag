@@ -31,6 +31,15 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     openai_chat_model: str = "gpt-4o-mini"
 
+    # S3-compatible storage / MinIO (used starting from the "Работа с
+    # файлами" milestone). Defaults match the local docker-compose `minio`
+    # service; not secrets worth protecting in a local dev setup.
+    s3_endpoint_url: str = "http://localhost:9000"
+    s3_access_key: str = "minioadmin"
+    s3_secret_key: str = "minioadmin"
+    s3_bucket: str = "files"
+    s3_region: str = "us-east-1"
+
 
 @lru_cache
 def get_settings() -> Settings:

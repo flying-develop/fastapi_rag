@@ -42,6 +42,9 @@ AI-сервис на стеке FastAPI + LangChain/LangGraph: RAG по стат
 - **База данных:** PostgreSQL
 - **Доступ к БД:** SQLAlchemy 2.0 (async) + Alembic для миграций
 - **Векторная БД:** Qdrant, интеграция через `langchain-qdrant`
+- **Объектное хранилище:** S3-совместимое (MinIO локально через
+  docker-compose), доступ через `aioboto3` (async-обёртка над
+  `boto3`/`aiobotocore`)
 - **Фоновые задачи / очереди:** ARQ + Redis (asyncio-нативная очередь
   задач с ретраями)
 - **LLM-провайдер:** OpenAI на первых этапах через единый интерфейс

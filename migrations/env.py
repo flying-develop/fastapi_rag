@@ -14,6 +14,7 @@ from app.infrastructure.db import Base
 # classes that have actually been imported somewhere in the process.
 from app.modules.dialog.models.dialog import Dialog  # noqa: F401
 from app.modules.dialog.models.dialog_message import DialogMessage  # noqa: F401
+from app.modules.files.models.file import File  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
