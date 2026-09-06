@@ -38,7 +38,7 @@ app/
 │       │   └── router.py       # POST /dialogs/{id}/messages
 │       ├── services/
 │       │   ├── dialog_service.py  # DialogService.send_message — история → граф LangGraph → сохранить ответ
-│       │   ├── graph.py            # build_dialog_graph() — LangGraph-граф диалога (пока один узел agent)
+│       │   ├── graph.py            # build_dialog_graph() — LangGraph-граф диалога (узлы agent/tools, условное рёбро)
 │       │   └── tools.py            # DIALOG_TOOLS — get_current_time, пример инструмента
 │       ├── models/
 │       │   ├── dialog.py       # Dialog(Base)
@@ -54,13 +54,13 @@ app/
     ├── config.py               # Settings (pydantic-settings), get_settings()
     ├── logging.py               # setup_logging(), структурированный key=value формат
     ├── db.py                    # async engine/session, Base, get_db()
-    └── llm.py                   # get_chat_model(), invoke_with_tools() — переиспользуемый tool-calling паттерн
+    └── llm.py                   # get_chat_model(), execute_tool_calls(), invoke_with_tools() — переиспользуемый tool-calling паттерн
 migrations/                    # Alembic (async), env.py читает DATABASE_URL из Settings
 tests/
 ├── conftest.py                # db_session fixture (транзакция + rollback между тестами)
 ├── infrastructure/
 │   ├── test_db.py             # тесты engine/session на реальном Postgres из Docker
-│   └── test_llm.py            # тесты invoke_with_tools() — FakeChatModel из tests/modules/dialog/conftest.py
+│   └── test_llm.py            # тесты invoke_with_tools()/execute_tool_calls() — FakeChatModel из tests/modules/dialog/conftest.py
 └── modules/
     └── dialog/
         ├── conftest.py             # FakeChatModel — без реальных вызовов OpenAI, поддерживает bind_tools/responses
@@ -68,7 +68,7 @@ tests/
         ├── test_dialog_message_repository.py  # тесты DialogMessageRepository
         ├── test_dialog_service.py     # тесты DialogService (реальная БД + фейковая LLM)
         ├── test_dialog_router.py      # тесты эндпоинта (httpx.AsyncClient + ASGITransport)
-        ├── test_graph.py              # тесты build_dialog_graph() — FakeChatModel, без БД
+        ├── test_graph.py              # тесты build_dialog_graph() — agent/tools, многошаговый tool calling, FakeChatModel, без БД
         └── test_tools.py              # юнит-тесты get_current_time
 alembic.ini                    # конфиг Alembic (URL переопределяется в migrations/env.py)
 Dockerfile                     # образ приложения (uv, python:3.12-slim)
@@ -87,9 +87,9 @@ docker-compose.yml             # app + postgres + redis + qdrant
 | `app/modules/dialog/repositories/dialog_repository.py` | `DialogRepository` — образец repository-паттерна для остальных модулей |
 | `app/modules/dialog/repositories/dialog_message_repository.py` | `DialogMessageRepository` — история сообщений диалога |
 | `app/modules/dialog/services/dialog_service.py` | `DialogService.send_message` — история → граф LangGraph → сохранить ответ |
-| `app/modules/dialog/services/graph.py` | `build_dialog_graph()` — LangGraph-граф диалога (состояние `DialogState`, узел `agent`) |
+| `app/modules/dialog/services/graph.py` | `build_dialog_graph()` — LangGraph-граф диалога (состояние `DialogState`, узлы `agent`/`tools`, условное рёбро) |
 | `app/modules/dialog/api/router.py` | `POST /dialogs/{id}/messages` — первый API-роут проекта |
-| `app/infrastructure/llm.py` | `get_chat_model()`, `invoke_with_tools()` — переиспользуемый tool-calling паттерн |
+| `app/infrastructure/llm.py` | `get_chat_model()`, `execute_tool_calls()`, `invoke_with_tools()` — переиспользуемый tool-calling паттерн |
 | `migrations/env.py` | Настройка Alembic: URL из `Settings`, `target_metadata = Base.metadata`; импортирует модели каждого модуля для autogenerate |
 | `docker-compose.yml` | Локальное окружение: app + PostgreSQL + Redis + Qdrant |
 

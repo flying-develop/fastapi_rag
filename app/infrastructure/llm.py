@@ -27,27 +27,23 @@ def get_chat_model() -> BaseChatModel:
     return ChatOpenAI(model=settings.openai_chat_model, api_key=settings.openai_api_key)
 
 
-async def invoke_with_tools(
-    chat_model: BaseChatModel, tools: list[BaseTool], messages: list[BaseMessage]
-) -> AIMessage:
-    """Invoke `chat_model` with `tools` bound, executing any tool calls the
-    model makes and returning its final reply.
+async def execute_tool_calls(
+    tools: list[BaseTool], tool_calls: list[dict]
+) -> list[ToolMessage]:
+    """Execute a list of tool calls, one `ToolMessage` per call, in order.
 
-    Reusable pattern: any module can call this with its own tool list —
-    it doesn't have to be `dialog`-specific. Supports exactly one round of
-    tool calling (model asks for tools once, gets results, replies) — no
-    recursion / multi-step agentic loop; that's the "Диалог как граф
-    LangGraph" milestone's job. Does not mutate the `messages` list passed
-    in — callers may hold onto their own reference to it.
+    Never raises — an unknown tool name or a tool that raises during
+    execution becomes an error `ToolMessage` instead, so the model can
+    react to it on its next turn rather than the whole request failing.
+
+    Shared by `invoke_with_tools()` (single-round helper, below) and the
+    dialog graph's `tools` node (`app/modules/dialog/services/graph.py`,
+    multi-round agent/tools loop) — extracted so both get the same
+    error-handling/logging behavior without duplicating it.
     """
-    model_with_tools = chat_model.bind_tools(tools) if tools else chat_model
-    response = await model_with_tools.ainvoke(messages)
-    if not response.tool_calls:
-        return response
-
     tools_by_name = {t.name: t for t in tools}
-    extended = [*messages, response]
-    for call in response.tool_calls:
+    results = []
+    for call in tool_calls:
         tool = tools_by_name.get(call["name"])
         if tool is None:
             logger.warning("unknown tool requested", extra={"tool_name": call["name"]})
@@ -66,7 +62,32 @@ async def invoke_with_tools(
                     "tool executed",
                     extra={"tool_name": call["name"], "tool_call_id": call["id"]},
                 )
-        extended.append(ToolMessage(content=str(result), tool_call_id=call["id"]))
+        results.append(ToolMessage(content=str(result), tool_call_id=call["id"]))
+    return results
+
+
+async def invoke_with_tools(
+    chat_model: BaseChatModel, tools: list[BaseTool], messages: list[BaseMessage]
+) -> AIMessage:
+    """Invoke `chat_model` with `tools` bound, executing any tool calls the
+    model makes and returning its final reply.
+
+    Reusable pattern: any module can call this with its own tool list —
+    it doesn't have to be `dialog`-specific. Supports exactly one round of
+    tool calling (model asks for tools once, gets results, replies) — no
+    recursion / multi-step agentic loop. Multi-step tool calling now lives
+    at the graph level instead (see `build_dialog_graph()`'s `agent`/`tools`
+    loop) — this helper stays as-is for direct (non-graph) callers. Does
+    not mutate the `messages` list passed in — callers may hold onto their
+    own reference to it.
+    """
+    model_with_tools = chat_model.bind_tools(tools) if tools else chat_model
+    response = await model_with_tools.ainvoke(messages)
+    if not response.tool_calls:
+        return response
+
+    tool_messages = await execute_tool_calls(tools, response.tool_calls)
+    extended = [*messages, response, *tool_messages]
 
     final = await model_with_tools.ainvoke(extended)
     if final.tool_calls:

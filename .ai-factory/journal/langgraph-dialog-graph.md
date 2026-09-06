@@ -3,7 +3,7 @@
 Веха roadmap: «Диалог как граф LangGraph»
 Планы вехи:
 - `.ai-factory/plans/langgraph-dialog-graph-skeleton.md` — базовый скелет графа (реализован, 6/6).
-- Второй план (ещё не создан) — узел `tools` + условные рёбра (agent↔tools), многошаговый tool calling.
+- `.ai-factory/plans/langgraph-dialog-graph-tools-loop.md` — узлы `agent`/`tools` с условным рёбром, многошаговый tool calling (реализован, 6/6). Закрывает веху.
 
 ## План 1: Базовый скелет графа
 
@@ -42,3 +42,42 @@
 - `docker compose down` — root-owned файлов не осталось.
 
 **Итог плана:** структура LangGraph введена в проект (состояние, узел, компиляция, вызов из сервиса) без изменения наблюдаемого поведения — переходный шаг перед вторым планом вехи, который разложит узел `agent` на `agent`/`tools` с условными рёбрами и снимет ограничение `invoke_with_tools()` в один раунд tool calling. Веха «Диалог как граф LangGraph» пока не закрыта — второй план ещё предстоит.
+
+## План 2: Узлы agent/tools с условными рёбрами
+
+### Task 1 — `execute_tool_calls()` в `app/infrastructure/llm.py`
+
+- Цикл выполнения `tool_calls` (неизвестный инструмент → `WARN` + `ToolMessage` с ошибкой; исключение при вызове → `WARN` + `ToolMessage` с ошибкой; успех → `INFO`) вынесен из `invoke_with_tools()` в отдельную `execute_tool_calls(tools, tool_calls) -> list[ToolMessage]`.
+- `invoke_with_tools()` переписан на использование `execute_tool_calls()` — чисто рефакторинг, публичная сигнатура и поведение не изменились (проверено регрессией `tests/infrastructure/test_llm.py`).
+- Общий хелпер нужен, чтобы не дублировать обработку ошибок между `invoke_with_tools()` (однораундовый, для прямых вызовов) и новым узлом `tools` графа (Task 2).
+
+### Task 2 — `agent`/`tools` узлы с условным рёбром — `app/modules/dialog/services/graph.py`
+
+- `build_dialog_graph()` переписан: `agent` вызывает модель напрямую (`chat_model.bind_tools(tools)` один раз при построении графа) вместо `invoke_with_tools()`; новый узел `tools` вызывает `execute_tool_calls()` на `tool_calls` последнего сообщения.
+- Условное рёбро `_should_continue`: `tool_calls` есть → `tools`, иначе → `END`. Ребро `tools → agent` замыкает цикл — модель может запрашивать инструменты несколько раз подряд.
+- Осознанно не используется `langgraph.prebuilt.ToolNode`/`tools_condition` — свой узел сохраняет уже задокументированный формат сообщений об ошибках.
+- Ограничение `recursion_limit=25` (default LangGraph) не обрабатывается отдельно — `GraphRecursionError` перехватывается существующим `try/except` в `DialogService.send_message`.
+
+### Task 3 — `DialogService`: подтверждено, изменений не требуется
+
+- Публичная форма вызова графа (`self._graph.ainvoke(...)` / `result["messages"][-1]`) не изменилась — переход на agent/tools узлы полностью инкапсулирован в `graph.py`. Хорошее свойство абстракции графа: вызывающий код не заметил изменения внутренней структуры.
+
+### Task 4 — Тесты
+
+- `tests/modules/dialog/test_graph.py`: добавлен `test_graph_executes_multiple_tool_call_rounds` (2 раунда tool calling подряд — то, что было невозможно при прежнем ограничении `invoke_with_tools()`), `test_graph_state_includes_tool_messages`; существующие тесты обновлены/переименованы, продолжают проходить.
+- `tests/infrastructure/test_llm.py`: добавлены прямые юнит-тесты `execute_tool_calls()` (успех, неизвестный инструмент, ошибка выполнения, порядок результатов); регрессия `invoke_with_tools()` — без изменений в утверждениях.
+- `tests/modules/dialog/test_dialog_service.py` — без изменений, поведенческий паритет подтверждён.
+
+### Task 5 — Документация
+
+- `docs/dialog-graph.md` переписан под новую структуру (agent/tools, условное рёбро, цикл, ограничение recursion_limit, обоснование отказа от `ToolNode`).
+- `docs/tool-calling.md`: добавлен раздел `execute_tool_calls()`, скорректировано "Ограничение" (относится только к прямым вызовам `invoke_with_tools()`, не к графу), убран устаревший пример вызова `invoke_with_tools()` из `DialogService`.
+- `AGENTS.md`: обновлены описания `graph.py`/`llm.py`/тестов в дереве структуры и таблице точек входа.
+
+### Task 6 — Финальная проверка
+
+- `docker compose build app` перед прогоном (обязательно после любых изменённых/новых файлов — см. План 1).
+- `docker compose run --rm app uv run pytest` — полный прогон.
+- `docker compose up -d --build` → `curl /health` → `200 OK`; `docker compose down` — без root-owned файлов.
+
+**Итог плана:** веха «Диалог как граф LangGraph» закрыта — граф диалога теперь поддерживает полноценный многошаговый tool calling через цикл `agent ⇄ tools` с условным рёбром, вместо однораундового ограничения `invoke_with_tools()`.
