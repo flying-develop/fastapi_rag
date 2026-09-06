@@ -1,4 +1,4 @@
-[← DialogMessage](dialog-message.md) · [Back to README](../README.md) · [Tool calling у LLM →](tool-calling.md)
+[← DialogMessage](dialog-message.md) · [Back to README](../README.md) · [Tool calling у LLM →](tool-calling.md) · [Диалог как граф LangGraph →](dialog-graph.md)
 
 # Диалоги с LLM: базовый чат
 
@@ -33,13 +33,12 @@ chat-модель, `DialogService` и первый API-эндпоинт прое
 2. Прочитать историю сообщений (`DialogMessageRepository.list_by_dialog`).
 3. Сохранить сообщение пользователя (`role="user"`).
 4. Сконвертировать историю + новое сообщение в LangChain-сообщения
-   (`role` → `HumanMessage`/`AIMessage`/`SystemMessage`) и вызвать
-   `chat_model.ainvoke(...)`.
+   (`role` → `HumanMessage`/`AIMessage`/`SystemMessage`) и передать в
+   скомпилированный граф LangGraph (`self._graph.ainvoke(...)`).
 5. Сохранить и вернуть ответ ассистента (`role="assistant"`).
 
-LangGraph здесь **не используется** — прямой линейный вызов LLM. Перевод
-на граф состояний — отдельная веха «Диалог как граф LangGraph»
-(следующая после Tool calling по `ROADMAP.md`).
+Вызов LLM идёт через граф LangGraph (`build_dialog_graph()`), а не
+напрямую — подробности в [Диалог как граф LangGraph](dialog-graph.md).
 
 ## API-эндпоинт
 
@@ -114,5 +113,6 @@ event loop, что и сам тест.
 - [Модуль dialog](dialog.md) — модель `Dialog`, `DialogRepository`
 - [DialogMessage](dialog-message.md) — модель и репозиторий истории
 - [Tool calling у LLM](tool-calling.md) — `invoke_with_tools`, пример-инструмент `get_current_time`
+- [Диалог как граф LangGraph](dialog-graph.md) — `DialogState`, узел `agent`, `build_dialog_graph()`
 - [Конфигурация](configuration.md) — `OPENAI_API_KEY`/`OPENAI_CHAT_MODEL`
 - [Архитектура](../.ai-factory/ARCHITECTURE.md) — паттерн Structured Modules

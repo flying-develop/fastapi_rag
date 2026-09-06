@@ -5,7 +5,6 @@ import logging
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 
-from app.infrastructure.llm import invoke_with_tools
 from app.modules.dialog.exceptions import DialogNotFoundError
 from app.modules.dialog.models.dialog_message import DialogMessage
 from app.modules.dialog.repositories.dialog_message_repository import (
@@ -13,6 +12,7 @@ from app.modules.dialog.repositories.dialog_message_repository import (
 )
 from app.modules.dialog.repositories.dialog_repository import DialogRepository
 from app.modules.dialog.schemas.dialog_message import DialogMessageCreate
+from app.modules.dialog.services.graph import build_dialog_graph
 from app.modules.dialog.services.tools import DIALOG_TOOLS
 
 logger = logging.getLogger(__name__)
@@ -41,6 +41,7 @@ class DialogService:
         self._dialog_repository = dialog_repository
         self._message_repository = message_repository
         self._chat_model = chat_model
+        self._graph = build_dialog_graph(chat_model, DIALOG_TOOLS)
 
     async def send_message(self, dialog_id: int, text: str) -> DialogMessage:
         dialog = await self._dialog_repository.get_by_id(dialog_id)
@@ -58,15 +59,14 @@ class DialogService:
             extra={"dialog_id": dialog_id, "history_length": len(langchain_messages)},
         )
         try:
-            response = await invoke_with_tools(
-                self._chat_model, DIALOG_TOOLS, langchain_messages
-            )
+            result = await self._graph.ainvoke({"messages": langchain_messages})
         except Exception as exc:
             logger.error(
                 "chat model call failed",
                 extra={"dialog_id": dialog_id, "error_type": type(exc).__name__},
             )
             raise
+        response = result["messages"][-1]
         logger.debug(
             "chat model responded",
             extra={"dialog_id": dialog_id, "response_length": len(str(response.content))},

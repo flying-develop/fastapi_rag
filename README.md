@@ -30,6 +30,7 @@ curl http://localhost:8000/health
 - **История сообщений (DialogMessage)** — модель, репозиторий для истории диалога — см. [docs/dialog-message.md](docs/dialog-message.md).
 - **Диалоги с LLM** — `POST /dialogs/{id}/messages` через LangChain (OpenAI), история сохраняется в PostgreSQL — см. [docs/dialog-chat.md](docs/dialog-chat.md).
 - **Tool calling у LLM** — переиспользуемый паттерн (`invoke_with_tools`) и пример-инструмент `get_current_time` — см. [docs/tool-calling.md](docs/tool-calling.md).
+- **Диалог как граф LangGraph** — логика диалога переведена на `StateGraph` (пока один узел `agent`) — см. [docs/dialog-graph.md](docs/dialog-graph.md).
 
 Остальные возможности (RAG, task pipeline, модерация) появляются
 поэтапно — см. [roadmap](.ai-factory/ROADMAP.md).
@@ -60,6 +61,7 @@ content-type: application/json
 | [DialogMessage](docs/dialog-message.md) | Модель и репозиторий истории сообщений диалога |
 | [Диалоги с LLM](docs/dialog-chat.md) | LangChain, `DialogService`, `POST /dialogs/{id}/messages` |
 | [Tool calling у LLM](docs/tool-calling.md) | `invoke_with_tools`, пример-инструмент `get_current_time` |
+| [Диалог как граф LangGraph](docs/dialog-graph.md) | `DialogState`, узел `agent`, `build_dialog_graph()` |
 | [Архитектура](.ai-factory/ARCHITECTURE.md) | Паттерн Structured Modules, структура папок, правила зависимостей |
 | [Описание проекта](.ai-factory/DESCRIPTION.md) | Цели, стек, вехи |
 | [Roadmap](.ai-factory/ROADMAP.md) | Вехи развития проекта |
