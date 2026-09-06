@@ -24,6 +24,8 @@ class FileRepository:
             content_type=data.content_type,
             size_bytes=data.size_bytes,
             storage_key=data.storage_key,
+            extracted_text=data.extracted_text,
+            parse_status=data.parse_status,
         )
         self._session.add(file)
         await self._session.flush()

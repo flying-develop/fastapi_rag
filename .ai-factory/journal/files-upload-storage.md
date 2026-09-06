@@ -3,7 +3,7 @@
 Веха roadmap: «Работа с файлами»
 Планы вехи:
 - `.ai-factory/plans/files-upload-storage.md` — приём файлов + S3-хранилище (реализован, 10/10).
-- Второй план (ещё не создан) — парсинг PDF/DOCX/XLSX в плоский текст; изображения и медиафайлы должны быть проигнорированы на этапе парсинга (не пытаться извлекать из них текст).
+- `.ai-factory/plans/files-parse-to-text.md` — парсинг PDF/DOCX/XLSX в плоский текст (реализован, 8/8). Закрывает веху.
 
 ## План 1: Приём и S3-хранилище
 
@@ -65,3 +65,50 @@
 - Root-owned `__pycache__` под `migrations/` (от bind-mount команды autogenerate) — подчищено (`rm` через контейнер с `--user root`), сам каталог в `.gitignore`, так что не блокирующая находка.
 
 **Итог плана:** модуль `files` — приём и хранение в S3-совместимом хранилище (MinIO), полный сквозной путь `POST /files` → `GET /files/{id}` работает, 50/50 тестов проходят. Веха «Работа с файлами» пока не закрыта — второй план (парсинг PDF/DOCX/XLSX в плоский текст, с явным игнорированием изображений/медиафайлов) ещё предстоит.
+
+## План 2: Парсинг в плоский текст
+
+### Task 1 — Зависимости для парсинга
+
+- `uv add pypdf python-docx openpyxl` (runtime), `uv add --group dev reportlab` (только для генерации PDF-фикстур в тестах — production-код только читает PDF).
+- Проверено, что `docker compose build`/`uv sync --frozen` по умолчанию ставит и `dev`-группу — `reportlab` доступен и в тестах, и в ручном smoke-тесте внутри контейнера.
+
+### Task 2 — Парсер `app/modules/files/services/file_parser.py`
+
+- `parse_to_text(content_type, data) -> (extracted_text, parse_status)` с диспетчеризацией по `content_type` на три поддерживаемых MIME-типа (PDF/DOCX/XLSX); всё остальное → `"skipped"` без попытки чтения байтов. Ошибка парсинга поддерживаемого типа → `"failed"`, `WARN`-лог, исключение не пробрасывается.
+- Мелкая находка по стилю (сразу исправлено, не отдельная задача): один `logger.info(...)` вызов был длиннее принятого в проекте стиля — перенесён на несколько строк, по аналогии с прошлым ревью `graph.py`.
+
+### Task 3 — Поля модели + миграция
+
+- `File.extracted_text` (`Text`, nullable), `File.parse_status` (не-nullable строка, без Python/DB enum — тот же принцип, что `DialogMessage.role`).
+- Миграция через bind-mount + `chown`, как обычно.
+- **Отловленная и исправленная проблема**: в таблице `files` уже была 1 строка (от ручного smoke-теста Плана 1), а автосгенерированная миграция ставила `parse_status` как `NOT NULL` без дефолта — `alembic upgrade head` упал бы на существующей строке. Исправлено вручную (по образцу уже задокументированного паттерна "Manually adjusted post-autogenerate" из миграции `dialog_messages`): `server_default='skipped'` на `add_column`, затем `alter_column(..., server_default=None)` сразу следом — бэкафилл для старых строк без постоянного дефолта в схеме и в ORM-модели.
+
+### Task 4 — Wiring парсинга в `FileService.upload_file`
+
+- `extracted_text, parse_status = await asyncio.to_thread(parse_to_text, content_type, data)` — синхронные библиотеки парсинга выполняются в threadpool, не блокируя event loop (тот же приём, что уже описан для sync-инструментов в `docs/tool-calling.md`).
+- `FileCreate`/`FileResponse` дополнены `extracted_text`/`parse_status` — оба поля возвращаются уже в ответе `POST /files`, не только через `GET /files/{id}/metadata`.
+
+### Task 5 — `GET /files/{file_id}/metadata`
+
+- Добавлен `FileService.get_metadata()` — не трогает S3 (в отличие от `download_file()`), только чтение метаданных из БД. Новый роут переиспользует уже существующий обработчик `StoredFileNotFoundError` без изменений.
+
+### Task 6 — Тесты
+
+- `test_file_parser.py`: PDF/DOCX/XLSX генерируются в памяти (`reportlab`/`python-docx`/`openpyxl`), без бинарных fixture-файлов в git; плюс `"skipped"` (изображение) и `"failed"` (битый PDF).
+- Расширены `test_file_service.py`/`test_file_router.py` под новые поля/эндпоинт.
+- **Отловленная и исправленная проблема**: существующие тесты `test_file_repository.py` (из Плана 1) стали падать с `pydantic.ValidationError` — `FileCreate` теперь требует `extracted_text`/`parse_status`, а старые тесты их не передавали. Обновлены (не переписаны с нуля) под новую сигнатуру.
+- Итог: 60/60 (50 было + 10 новых).
+
+### Task 7 — Документация
+
+- `docs/files.md` переписан под завершённую веху (убрана формулировка "первый из двух планов"), добавлен раздел "Парсинг в текст", обновлена таблица полей `File`, примеры `POST /files`/`GET /files/{id}/metadata`.
+- `README.md`/`AGENTS.md`/`.ai-factory/DESCRIPTION.md` обновлены (`pypdf`/`python-docx`/`openpyxl`, новый файл `file_parser.py`, новый эндпоинт).
+
+### Task 8 — Финальная проверка
+
+- 60/60 тестов, `docker compose build` перед каждым прогоном (обязательное правило проекта).
+- Ручной сквозной smoke-тест — самый информативный шаг: реальные PDF/DOCX/XLSX сгенерированы внутри контейнера (`reportlab`/`python-docx`/`openpyxl`) и скопированы на хост (`docker compose cp`), загружены через `curl -F` с явным `type=...`. Результат для всех трёх — `parse_status: "success"` с корректным `extracted_text`; поддельный PNG (текстовые байты с `type=image/png`) — `parse_status: "skipped"`, `extracted_text: null`, парсер даже не пытался декодировать байты. `GET /files/{id}/metadata` и `404` на несуществующий `id` — проверены отдельно.
+- Root-owned `__pycache__` под `migrations/` (тот же артефакт bind-mount команды, что и в Плане 1) — снова подчищено; не блокирующая находка, `.gitignore` уже её покрывает.
+
+**Итог плана:** веха «Работа с файлами» закрыта — модуль `files` теперь принимает, хранит и извлекает плоский текст из PDF/DOCX/XLSX при загрузке, с явным и проверенным игнорированием изображений/медиафайлов и устойчивостью к повреждённым файлам (парсинг никогда не роняет загрузку).

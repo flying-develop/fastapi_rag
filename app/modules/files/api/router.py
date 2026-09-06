@@ -33,6 +33,14 @@ async def upload_file(
     return FileResponse.model_validate(stored)
 
 
+@router.get("/{file_id}/metadata", response_model=FileResponse)
+async def get_file_metadata(
+    file_id: int, service: FileService = Depends(get_file_service)
+) -> FileResponse:
+    file = await service.get_metadata(file_id)
+    return FileResponse.model_validate(file)
+
+
 @router.get("/{file_id}")
 async def download_file(
     file_id: int, service: FileService = Depends(get_file_service)

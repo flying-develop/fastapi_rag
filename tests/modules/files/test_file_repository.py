@@ -14,6 +14,8 @@ async def test_create_persists_file(db_session) -> None:
             content_type="application/pdf",
             size_bytes=1234,
             storage_key="abc123.pdf",
+            extracted_text="Some extracted text",
+            parse_status="success",
         )
     )
 
@@ -22,6 +24,8 @@ async def test_create_persists_file(db_session) -> None:
     assert file.content_type == "application/pdf"
     assert file.size_bytes == 1234
     assert file.storage_key == "abc123.pdf"
+    assert file.extracted_text == "Some extracted text"
+    assert file.parse_status == "success"
     assert file.created_at is not None
 
 
@@ -39,6 +43,8 @@ async def test_get_by_id_returns_created_file(db_session) -> None:
             content_type="image/png",
             size_bytes=42,
             storage_key="xyz789.png",
+            extracted_text=None,
+            parse_status="skipped",
         )
     )
 

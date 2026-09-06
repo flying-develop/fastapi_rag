@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import func
+from sqlalchemy import Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.infrastructure.db import Base
@@ -25,4 +25,11 @@ class File(Base):
     content_type: Mapped[str]
     size_bytes: Mapped[int]
     storage_key: Mapped[str] = mapped_column(unique=True)
+    # Plain text extracted from PDF/DOCX/XLSX at upload time — see
+    # `app/modules/files/services/file_parser.py`. `None` unless
+    # `parse_status == "success"`.
+    extracted_text: Mapped[str | None] = mapped_column(Text)
+    # One of "success"/"skipped"/"failed" — plain string, same convention
+    # as `DialogMessage.role` (no Python/DB enum for this kind of field).
+    parse_status: Mapped[str]
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
